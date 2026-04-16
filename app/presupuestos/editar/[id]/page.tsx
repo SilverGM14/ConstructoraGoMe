@@ -68,7 +68,7 @@ export default function EditarPresupuesto({ params }: { params: Promise<{ id: st
     }
 
     // OFFLINE: Usar mutate
-    const result = await mutate('update', payload, parseInt(Id));
+    const result = await mutate('update', payload, parseInt(id));
 
     if (result.error) {
       alert('Error: ' + result.error.message)

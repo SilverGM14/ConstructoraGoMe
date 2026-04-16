@@ -75,7 +75,7 @@ export default function NuevoPago() {
     }
 
     // OFFLINE: Usar mutate para inserción
-    const result = await mutate('update', payload, parseInt(Id));
+    const result = await mutate('insert', payload);
 
     if (result.error) {
       alert('Error: ' + result.error.message)

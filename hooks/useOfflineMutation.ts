@@ -7,7 +7,7 @@ import { PostgrestError } from '@supabase/supabase-js';
 type MutationAction = 'insert' | 'update' | 'delete';
 
 interface MutationResult {
-  data: any | null;
+  data: any;
   error: PostgrestError | Error | null;
 }
 
@@ -20,35 +20,31 @@ export function useOfflineMutation(table: string) {
     recordId?: number
   ): Promise<MutationResult> => {
     if (isOnline) {
-      // Ejecutar directamente en Supabase
-      let result;
       try {
-        if (action === 'insert') {
-          result = await supabase.from(table).insert(payload);
-        } else if (action === 'update') {
-          result = await supabase.from(table).update(payload).eq('id', recordId);
-        } else if (action === 'delete') {
-          result = await supabase.from(table).delete().eq('id', recordId);
+        let result;
+        if (action === 'insert') result = await supabase.from(table).insert(payload);
+        else if (action === 'update') result = await supabase.from(table).update(payload).eq('id', recordId);
+        else if (action === 'delete') result = await supabase.from(table).delete().eq('id', recordId);
+        
+        // Normalizamos la respuesta
+        if (result?.error) {
+          return { data: null, error: result.error };
         }
-        return { data: result?.data ?? null, error: result?.error ?? null };
+        return { data: result?.data ?? null, error: null };
       } catch (err) {
         return { data: null, error: err as Error };
       }
     } else {
-      // Guardar en cola local
-      try {
-        await offlineDB.pendingOperations.add({
-          table,
-          action,
-          payload,
-          recordId,
-          timestamp: Date.now(),
-          synced: false,
-        });
-        return { data: payload, error: null };
-      } catch (err) {
-        return { data: null, error: err as Error };
-      }
+      // Offline: guardar en cola
+      await offlineDB.pendingOperations.add({
+        table,
+        action,
+        payload,
+        recordId,
+        timestamp: Date.now(),
+        synced: 0,
+      });
+      return { data: payload, error: null };
     }
   };
 

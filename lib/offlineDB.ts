@@ -8,7 +8,7 @@ export interface PendingOperation {
   payload: any;           // data to send (for insert/update)
   recordId?: number;      // ID of the record (for update/delete)
   timestamp: number;
-  synced: boolean;
+  synced: number;
 }
 
 class OfflineDB extends Dexie {

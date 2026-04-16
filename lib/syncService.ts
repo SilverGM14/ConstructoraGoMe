@@ -5,7 +5,7 @@ import { offlineDB } from './offlineDB';
 export async function processPendingOperations() {
   const pending = await offlineDB.pendingOperations
     .where('synced')
-    .equals(false)
+    .equals(0)
     .sortBy('timestamp');
 
   for (const op of pending) {
@@ -32,7 +32,7 @@ export async function processPendingOperations() {
       if (result?.error) throw result.error;
 
       // Mark as synced
-      await offlineDB.pendingOperations.update(op.id!, { synced: true });
+      await offlineDB.pendingOperations.update(op.id!, { synced: 1 });
     } catch (error) {
       console.error(`[Sync] Failed to sync operation ${op.id}:`, error);
       // Optionally implement retry logic here

@@ -81,7 +81,7 @@ export default function EditarPago({ params }: { params: Promise<{ id: string }>
     }
 
     // OFFLINE: Usar mutate en lugar de supabase directamente
-    const result = await mutate('update', payload, parseInt(Id));
+    const result = await mutate('update', payload, parseInt(id));
 
     if (result.error) {
       alert('Error: ' + result.error.message)
