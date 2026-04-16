@@ -1,7 +1,9 @@
-import type { NextConfig } from 'next'
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Forzar el uso de Webpack en vez de Turbopack en producción
+  webpack: (config) => {
+    return config;
+  },
+};
 
-const nextConfig: NextConfig = {
-  // Sin output:export
-}
-
-export default nextConfig
+export default nextConfig;
