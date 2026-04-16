@@ -1,0 +1,4 @@
+root: C:\Users\SIL-V\source\repos\ProyectoConstruccionMovil\gome-webapp 
+path: C:\Program Files\nodejs 
+arch: 64 
+proxy: none

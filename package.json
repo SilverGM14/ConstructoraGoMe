@@ -2,11 +2,11 @@
   "name": "gome-webapp",
   "version": "0.1.0",
   "private": true,
- "scripts": {
-  "dev": "next dev",
-  "build": "next build --webpack",     // ← Muy importante
-  "start": "next start",
-  "lint": "eslint"
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
