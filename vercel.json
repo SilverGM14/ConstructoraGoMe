@@ -1,10 +1,4 @@
-<<<<<<< HEAD
-{
-  "buildCommand": "npm run build",
-  "installCommand": "npm ci"
-=======
 {
   "buildCommand": "npm install && npm run build",
   "installCommand": "npm install"
->>>>>>> c5443e8ca1931a15a7bb66f0ff0e2b9fe20207c8
 }
