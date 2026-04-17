@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setProfile(null);
   };
 
-  const isAdmin = profile?.rol === 'admin';
+  const isAdmin = true; // Todos los usuarios autenticados son administradores
 
   return (
     <AuthContext.Provider value={{ 
