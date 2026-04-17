@@ -39,13 +39,13 @@ export default function LoginPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             marginBottom: '1rem'
           }}>
-            <Zap size={24} color="#fff" strokeWidth={2.5}/>
+            <Zap size={24} color="#fff" strokeWidth={2.5} />
           </div>
           <h1 className="glitch font-display font-bold text-3xl" data-text="ACCESO_SISTEMA">
             ACCESO_SISTEMA
           </h1>
         </div>
-        
+
         {error && (
           <div className="card-alert text-accent text-sm font-mono p-3 mb-4 text-center">
             {error}
@@ -55,20 +55,42 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="input-label">Email Operador</label>
-            <input type="email" required className="input-cyber" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input
+              type="email"
+              required
+              className="input-cyber"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div>
             <label className="input-label">Contraseña</label>
-            <input type="password" required className="input-cyber" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input
+              type="password"
+              required
+              className="input-cyber"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
-          <button type="submit" disabled={loading} className="btn-primary w-full justify-center mt-6" style={{ padding: '0.8rem' }}>
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary w-full justify-center mt-6"
+            style={{ padding: '0.8rem' }}
+          >
             {loading ? 'AUTENTICANDO...' : 'INICIAR SESIÓN'}
           </button>
         </form>
 
-        <p className="font-mono text-xs text-muted text-center mt-6">
-          ¿No tienes acceso? <Link href="/registro" className="text-accent hover:underline">Solicitar registro</Link>
-        </p>
+        <div className="flex justify-between items-center mt-4 text-xs font-mono">
+          <Link href="/recuperar-password" className="text-accent hover:underline">
+            ¿Olvidaste tu contraseña?
+          </Link>
+          <Link href="/registro" className="text-accent hover:underline">
+            Solicitar registro
+          </Link>
+        </div>
       </div>
     </div>
   )

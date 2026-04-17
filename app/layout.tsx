@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import './globals.css'
 import { AuthProvider, useAuth } from '@/lib/AuthContext'
-
+import { OnlineSyncProvider } from '@/components/OnlineSyncProvider';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
 // ── Tipos ────────────────────────────────────────────────────────────
@@ -238,7 +238,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <AuthProvider>
-          <AppLayout>{children}</AppLayout>
+          <OnlineSyncProvider>
+            <AppLayout>{children}</AppLayout>
+          </OnlineSyncProvider>
         </AuthProvider>
       </body>
     </html>
