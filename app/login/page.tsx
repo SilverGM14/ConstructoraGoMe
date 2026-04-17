@@ -22,7 +22,8 @@ export default function LoginPage() {
       await signIn(email, password)
       router.push('/')
     } catch (err: any) {
-      setError(err.message || 'Error de autenticación')
+      console.error(err);
+      setError(err?.message || 'Credenciales incorrectas o usuario no registrado');
     } finally {
       setLoading(false)
     }
