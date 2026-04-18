@@ -16,10 +16,9 @@ type Presupuesto = {
   concepto: string
   montoasignado: number
   montogastado: number
-  obras?: { nombre: string } | null
+  obras: { nombre: string }[] | null
 }
 
-// Tipo recursivo para obras con hijos (para el selector jerárquico)
 type ObraConHijos = Obra & { hijos: ObraConHijos[] }
 
 export default function NuevoPago() {
@@ -42,7 +41,6 @@ export default function NuevoPago() {
   const isOnline = useNetworkStatus()
   const { mutate } = useOfflineMutation('pagos')
 
-  // Cargar empleados y obras al montar
   useEffect(() => {
     const cargar = async () => {
       const [emp, obr] = await Promise.all([
@@ -55,9 +53,7 @@ export default function NuevoPago() {
     cargar()
   }, [])
 
-  // Función recursiva para cargar presupuestos (propios o heredados del padre)
   const cargarPresupuestosHeredados = async (obraId: number) => {
-    // 1. Intentar presupuestos directos
     const { data, error } = await supabase
       .from('presupuestos')
       .select('id, concepto, montoasignado, montogastado, obras(nombre)')
@@ -74,7 +70,6 @@ export default function NuevoPago() {
       return
     }
 
-    // 2. Si no hay, buscar la obra padre
     const { data: obra } = await supabase
       .from('obras')
       .select('obrapadreid')
@@ -88,7 +83,6 @@ export default function NuevoPago() {
     }
   }
 
-  // Efecto para cargar presupuestos cuando cambia la obra seleccionada
   useEffect(() => {
     if (!form.obraid) {
       setPresupuestos([])
@@ -133,7 +127,6 @@ export default function NuevoPago() {
     setLoading(false)
   }
 
-  // Función para mostrar jerarquía en el select de obras
   const obrasJerarquicas = () => {
     const mapa = new Map<number, ObraConHijos>()
     obras.forEach(o => mapa.set(o.id, { ...o, hijos: [] }))
@@ -172,7 +165,6 @@ export default function NuevoPago() {
             </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Empleado */}
             <div>
               <label className="input-label"><User size={12} className="inline mr-1" /> EMPLEADO *</label>
               <select name="empleadoid" value={form.empleadoid} onChange={handleChange} required className="input-cyber">
@@ -181,7 +173,6 @@ export default function NuevoPago() {
               </select>
             </div>
 
-            {/* Obra (selector jerárquico) */}
             <div>
               <label className="input-label"><Building2 size={12} className="inline mr-1" /> OBRA / FASE</label>
               <select name="obraid" value={form.obraid} onChange={handleChange} className="input-cyber">
@@ -190,7 +181,6 @@ export default function NuevoPago() {
               </select>
             </div>
 
-            {/* Presupuesto (con herencia) */}
             <div>
               <label className="input-label"><FolderOpen size={12} className="inline mr-1" /> PARTIDA PRESUPUESTARIA</label>
               <select
@@ -203,7 +193,8 @@ export default function NuevoPago() {
                 <option value="">Sin partida</option>
                 {presupuestos.map(p => {
                   const disponible = p.montoasignado - p.montogastado
-                  const obraInfo = p.obras?.nombre ? ` (de ${p.obras.nombre})` : ''
+                  const nombreObra = p.obras?.[0]?.nombre
+                  const obraInfo = nombreObra ? ` (de ${nombreObra})` : ''
                   return (
                     <option key={p.id} value={p.id}>
                       {p.concepto}{obraInfo} (Disp: RD$ {disponible.toLocaleString()})
@@ -218,7 +209,6 @@ export default function NuevoPago() {
               )}
             </div>
 
-            {/* Fecha y Monto */}
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="input-label"><Calendar size={12} /> FECHA *</label>
@@ -230,13 +220,11 @@ export default function NuevoPago() {
               </div>
             </div>
 
-            {/* Concepto */}
             <div>
               <label className="input-label"><FileText size={12} /> CONCEPTO *</label>
               <input name="concepto" value={form.concepto} onChange={handleChange} required className="input-cyber" />
             </div>
 
-            {/* Estado */}
             <div>
               <label className="input-label"><AlertCircle size={12} /> ESTADO</label>
               <select name="estado" value={form.estado} onChange={handleChange} className="input-cyber">
@@ -246,13 +234,11 @@ export default function NuevoPago() {
               </select>
             </div>
 
-            {/* Notas */}
             <div>
               <label className="input-label"><FileText size={12} /> NOTAS</label>
               <textarea name="notas" value={form.notas} onChange={handleChange} rows={2} className="input-cyber" />
             </div>
 
-            {/* Botones */}
             <div className="flex gap-3 pt-4">
               <button type="submit" disabled={loading} className="btn-primary">
                 <Save size={16} /> {loading ? 'Guardando...' : 'Guardar'}

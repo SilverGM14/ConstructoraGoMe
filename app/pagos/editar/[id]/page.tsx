@@ -17,7 +17,7 @@ type Presupuesto = {
   concepto: string
   montoasignado: number
   montogastado: number
-  obras?: { nombre: string } | null
+  obras: { nombre: string }[] | null
 }
 
 type ObraConHijos = Obra & { hijos: ObraConHijos[] }
@@ -45,7 +45,6 @@ export default function EditarPago() {
   const isOnline = useNetworkStatus()
   const { mutate } = useOfflineMutation('pagos')
 
-  // Cargar datos iniciales (pago, empleados, obras)
   useEffect(() => {
     const fetchData = async () => {
       const [pagoRes, empRes, obrasRes] = await Promise.all([
@@ -73,7 +72,6 @@ export default function EditarPago() {
     fetchData()
   }, [id])
 
-  // Función recursiva para cargar presupuestos (herencia)
   const cargarPresupuestosHeredados = async (obraId: number) => {
     const { data, error } = await supabase
       .from('presupuestos')
@@ -104,7 +102,6 @@ export default function EditarPago() {
     }
   }
 
-  // Efecto para cargar presupuestos cuando cambia la obra seleccionada
   useEffect(() => {
     if (!form.obraid) {
       setPresupuestos([])
@@ -149,7 +146,6 @@ export default function EditarPago() {
     setLoading(false)
   }
 
-  // Selector jerárquico de obras
   const obrasJerarquicas = () => {
     const mapa = new Map<number, ObraConHijos>()
     obras.forEach(o => mapa.set(o.id, { ...o, hijos: [] }))
@@ -191,7 +187,6 @@ export default function EditarPago() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Empleado */}
             <div>
               <label className="input-label"><User size={12} className="inline mr-1" /> EMPLEADO *</label>
               <select name="empleadoid" value={form.empleadoid} onChange={handleChange} required className="input-cyber">
@@ -200,7 +195,6 @@ export default function EditarPago() {
               </select>
             </div>
 
-            {/* Obra */}
             <div>
               <label className="input-label"><Building2 size={12} className="inline mr-1" /> OBRA (opcional)</label>
               <select name="obraid" value={form.obraid} onChange={handleChange} className="input-cyber">
@@ -209,7 +203,6 @@ export default function EditarPago() {
               </select>
             </div>
 
-            {/* Presupuesto (con herencia) */}
             <div>
               <label className="input-label"><FolderOpen size={12} className="inline mr-1" /> PARTIDA PRESUPUESTARIA</label>
               <select
@@ -222,7 +215,8 @@ export default function EditarPago() {
                 <option value="">Sin partida</option>
                 {presupuestos.map(p => {
                   const disponible = p.montoasignado - p.montogastado
-                  const obraInfo = p.obras?.nombre ? ` (de ${p.obras.nombre})` : ''
+                  const nombreObra = p.obras?.[0]?.nombre
+                  const obraInfo = nombreObra ? ` (de ${nombreObra})` : ''
                   return (
                     <option key={p.id} value={p.id}>
                       {p.concepto}{obraInfo} (Disp: RD$ {disponible.toLocaleString()})
@@ -237,7 +231,6 @@ export default function EditarPago() {
               )}
             </div>
 
-            {/* Fecha y Monto */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="input-label"><Calendar size={12} className="inline mr-1" /> FECHA *</label>
@@ -249,13 +242,11 @@ export default function EditarPago() {
               </div>
             </div>
 
-            {/* Concepto */}
             <div>
               <label className="input-label"><FileText size={12} className="inline mr-1" /> CONCEPTO *</label>
               <input name="concepto" value={form.concepto} onChange={handleChange} required className="input-cyber" />
             </div>
 
-            {/* Estado */}
             <div>
               <label className="input-label"><AlertCircle size={12} className="inline mr-1" /> ESTADO</label>
               <select name="estado" value={form.estado} onChange={handleChange} className="input-cyber">
@@ -265,13 +256,11 @@ export default function EditarPago() {
               </select>
             </div>
 
-            {/* Notas */}
             <div>
               <label className="input-label"><FileText size={12} className="inline mr-1" /> NOTAS</label>
               <textarea name="notas" value={form.notas} onChange={handleChange} rows={2} className="input-cyber" />
             </div>
 
-            {/* Botones */}
             <div className="flex gap-3 pt-4">
               <button type="submit" disabled={loading} className="btn-primary flex items-center gap-2">
                 <Save size={16} /> {loading ? 'Guardando...' : 'Actualizar Pago'}
