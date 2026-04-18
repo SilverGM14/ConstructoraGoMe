@@ -32,7 +32,7 @@ export default function EditarDocumento() {
   useEffect(() => {
     const fetchData = async () => {
       const [docRes, obrasRes] = await Promise.all([
-        supabase.from('Documentos').select('*, Obras(Nombre)').eq('Id', Id).single(),
+        supabase.from('Documentos').select('*, Obras(Nombre)').eq('Id', id).single(),
         supabase.from('Obras').select('Id, Nombre')
       ])
 
