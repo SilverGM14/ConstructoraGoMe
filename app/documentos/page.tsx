@@ -41,14 +41,14 @@ export default function DocumentosPage() {
   }, [])
 
   const cargarObras = async () => {
-    const { data } = await supabase.from('Obras').select('Id, Nombre')
+    const { data } = await supabase.from('obras').select('Id, Nombre')
     if (data) setObras(data)
   }
 
   const cargarDocumentos = async () => {
     const { data, error } = await supabase
       .from('Documentos')
-      .select('*, Obras(Nombre)')
+      .select('*, obras(Nombre)')
       .order('FechaSubida', { ascending: false })
 
     if (!error && data) {

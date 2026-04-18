@@ -26,7 +26,7 @@ export default function NuevoDocumento() {
   const isOnline = useNetworkStatus()
 
   useEffect(() => {
-    supabase.from('Obras').select('Id, Nombre').then(res => {
+    supabase.from('obras').select('Id, Nombre').then(res => {
       if (res.data) setObras(res.data)
     })
   }, [])
