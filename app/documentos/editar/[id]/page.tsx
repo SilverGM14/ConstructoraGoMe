@@ -2,7 +2,8 @@
 
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState} from 'react'
+import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Save, X, FileText, Building2, WifiOff } from 'lucide-react'
 import ProtectedRoute from '@/lib/ProtectedRoute'
@@ -11,9 +12,10 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
 type Obra = { Id: number; Nombre: string }
 
-export default function EditarDocumento({ params }: { params: Promise<{ Id: string }> }) {
+export default function EditarDocumento() {
   const router = useRouter()
-  const { Id } = use(params)
+  const params=useParams();
+  const id=params.id as string;
   const [loading, setLoading] = useState(false)
   const [obras, setObras] = useState<Obra[]>([])
   const [documento, setDocumento] = useState<any>(null)

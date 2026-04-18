@@ -2,7 +2,8 @@
 
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState} from 'react'
+import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Save, X, User, Building2, Calendar, DollarSign, FileText, AlertCircle, WifiOff } from 'lucide-react'
 import ProtectedRoute from '@/lib/ProtectedRoute'
@@ -12,9 +13,10 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 type Empleado = { id: number; nombre: string }
 type Obra = { id: number; nombre: string }
 
-export default function EditarPago({ params }: { params: Promise<{ id: string }> }) {
+export default function EditarPago() {
   const router = useRouter()
-  const { id } = use(params)
+  const params=useParams();
+  const id=params.id as string;
   const [loading, setLoading] = useState(false)
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [obras, setObras] = useState<Obra[]>([])

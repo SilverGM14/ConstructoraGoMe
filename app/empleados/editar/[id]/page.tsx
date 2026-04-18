@@ -2,13 +2,15 @@
 
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState} from 'react'
+import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Save, X, User, Briefcase, Phone, Mail, Award } from 'lucide-react'
 
-export default function EditarEmpleado({ params }: { params: Promise<{ id: string }> }) {
+export default function EditarEmpleado() {
   const router = useRouter()
-  const { id } = use(params)
+  const params=useParams();
+  const id=params.id as string;
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     nombre: '',

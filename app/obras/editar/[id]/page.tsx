@@ -2,12 +2,13 @@
 
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState} from 'react'
 import { motion } from 'framer-motion'
 import { Save, X, Building2, FileText, User, MapPin, DollarSign, Calendar, Percent, WifiOff } from 'lucide-react'
 import ProtectedRoute from '@/lib/ProtectedRoute'
 import { useOfflineMutation } from '@/hooks/useOfflineMutation'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
+import { useParams } from 'next/navigation'
 
 type ObraForm = {
   nombre: string
@@ -21,9 +22,10 @@ type ObraForm = {
   fechafin: string
 }
 
-export default function EditarObra({ params }: { params: Promise<{ id: string }> }) {
+export default function EditarObra() {
   const router = useRouter()
-  const { id } = use(params)
+  const params=useParams();
+  const id=params.id as string;
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState<ObraForm>({
     nombre: '',
