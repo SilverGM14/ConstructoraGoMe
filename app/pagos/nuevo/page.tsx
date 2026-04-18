@@ -11,9 +11,15 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
 type Empleado = { id: number; nombre: string }
 type Obra = { id: number; nombre: string; obrapadreid: number | null }
-type Presupuesto = { id: number; concepto: string; montoasignado: number; montogastado: number }
+type Presupuesto = {
+  id: number
+  concepto: string
+  montoasignado: number
+  montogastado: number
+  obras?: { nombre: string } | null
+}
 
-// Tipo recursivo para obras con hijos
+// Tipo recursivo para obras con hijos (para el selector jerárquico)
 type ObraConHijos = Obra & { hijos: ObraConHijos[] }
 
 export default function NuevoPago() {
@@ -33,10 +39,10 @@ export default function NuevoPago() {
     notas: ''
   })
 
-  // OFFLINE: Hooks de red y mutación offline
   const isOnline = useNetworkStatus()
   const { mutate } = useOfflineMutation('pagos')
 
+  // Cargar empleados y obras al montar
   useEffect(() => {
     const cargar = async () => {
       const [emp, obr] = await Promise.all([
@@ -49,9 +55,46 @@ export default function NuevoPago() {
     cargar()
   }, [])
 
+  // Función recursiva para cargar presupuestos (propios o heredados del padre)
+  const cargarPresupuestosHeredados = async (obraId: number) => {
+    // 1. Intentar presupuestos directos
+    const { data, error } = await supabase
+      .from('presupuestos')
+      .select('id, concepto, montoasignado, montogastado, obras(nombre)')
+      .eq('obraid', obraId)
+
+    if (error) {
+      console.error('Error al cargar presupuestos:', error)
+      setPresupuestos([])
+      return
+    }
+
+    if (data && data.length > 0) {
+      setPresupuestos(data as Presupuesto[])
+      return
+    }
+
+    // 2. Si no hay, buscar la obra padre
+    const { data: obra } = await supabase
+      .from('obras')
+      .select('obrapadreid')
+      .eq('id', obraId)
+      .single()
+
+    if (obra?.obrapadreid) {
+      await cargarPresupuestosHeredados(obra.obrapadreid)
+    } else {
+      setPresupuestos([])
+    }
+  }
+
+  // Efecto para cargar presupuestos cuando cambia la obra seleccionada
   useEffect(() => {
-    if (!form.obraid) { setPresupuestos([]); return }
-    supabase.from('presupuestos').select('id, concepto, montoasignado, montogastado').eq('obraid', form.obraid).then(res => { if (res.data) setPresupuestos(res.data) })
+    if (!form.obraid) {
+      setPresupuestos([])
+      return
+    }
+    cargarPresupuestosHeredados(parseInt(form.obraid))
   }, [form.obraid])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -60,7 +103,10 @@ export default function NuevoPago() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.empleadoid || !form.monto || !form.concepto) { alert('Completa campos obligatorios'); return }
+    if (!form.empleadoid || !form.monto || !form.concepto) {
+      alert('Completa campos obligatorios')
+      return
+    }
     setLoading(true)
 
     const payload = {
@@ -74,8 +120,7 @@ export default function NuevoPago() {
       notas: form.notas || null
     }
 
-    // OFFLINE: Usar mutate para inserción
-    const result = await mutate('insert', payload);
+    const result = await mutate('insert', payload)
 
     if (result.error) {
       alert('Error: ' + result.error.message)
@@ -88,7 +133,7 @@ export default function NuevoPago() {
     setLoading(false)
   }
 
-  // Función para mostrar jerarquía en select de obras (CORREGIDA)
+  // Función para mostrar jerarquía en el select de obras
   const obrasJerarquicas = () => {
     const mapa = new Map<number, ObraConHijos>()
     obras.forEach(o => mapa.set(o.id, { ...o, hijos: [] }))
@@ -113,7 +158,6 @@ export default function NuevoPago() {
   return (
     <ProtectedRoute>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto">
-        {/* OFFLINE: Badge de estado sin conexión */}
         {!isOnline && (
           <div className="mb-3 p-2 card-alert flex items-center gap-2 text-sm">
             <WifiOff size={16} /> Modo sin conexión — los cambios se guardarán localmente
@@ -123,9 +167,12 @@ export default function NuevoPago() {
         <div className="card p-6 md:p-8">
           <div className="mb-8">
             <h1 className="text-2xl font-bold glitch" data-text="Nuevo Pago">Nuevo Pago</h1>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>REGISTRAR PAGO A EMPLEADO</p>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              REGISTRAR PAGO A EMPLEADO
+            </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Empleado */}
             <div>
               <label className="input-label"><User size={12} className="inline mr-1" /> EMPLEADO *</label>
               <select name="empleadoid" value={form.empleadoid} onChange={handleChange} required className="input-cyber">
@@ -133,6 +180,8 @@ export default function NuevoPago() {
                 {empleados.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
               </select>
             </div>
+
+            {/* Obra (selector jerárquico) */}
             <div>
               <label className="input-label"><Building2 size={12} className="inline mr-1" /> OBRA / FASE</label>
               <select name="obraid" value={form.obraid} onChange={handleChange} className="input-cyber">
@@ -140,27 +189,77 @@ export default function NuevoPago() {
                 {obrasJerarquicas().map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
               </select>
             </div>
+
+            {/* Presupuesto (con herencia) */}
             <div>
               <label className="input-label"><FolderOpen size={12} className="inline mr-1" /> PARTIDA PRESUPUESTARIA</label>
-              <select name="presupuestoid" value={form.presupuestoid} onChange={handleChange} className="input-cyber" disabled={!form.obraid || presupuestos.length === 0}>
+              <select
+                name="presupuestoid"
+                value={form.presupuestoid}
+                onChange={handleChange}
+                className="input-cyber"
+                disabled={!form.obraid}
+              >
                 <option value="">Sin partida</option>
                 {presupuestos.map(p => {
                   const disponible = p.montoasignado - p.montogastado
-                  return <option key={p.id} value={p.id}>{p.concepto} (Disp: RD$ {disponible.toLocaleString()})</option>
+                  const obraInfo = p.obras?.nombre ? ` (de ${p.obras.nombre})` : ''
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {p.concepto}{obraInfo} (Disp: RD$ {disponible.toLocaleString()})
+                    </option>
+                  )
                 })}
               </select>
-              {form.obraid && presupuestos.length === 0 && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>No hay presupuestos para esta obra.</p>}
+              {form.obraid && presupuestos.length === 0 && (
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  No hay presupuestos para esta obra ni sus ancestros.
+                </p>
+              )}
             </div>
+
+            {/* Fecha y Monto */}
             <div className="grid grid-cols-2 gap-6">
-              <div><label className="input-label"><Calendar size={12} /> FECHA *</label><input name="fecha" type="date" value={form.fecha} onChange={handleChange} required className="input-cyber" /></div>
-              <div><label className="input-label"><DollarSign size={12} /> MONTO *</label><input name="monto" type="number" step="0.01" value={form.monto} onChange={handleChange} required className="input-cyber" /></div>
+              <div>
+                <label className="input-label"><Calendar size={12} /> FECHA *</label>
+                <input name="fecha" type="date" value={form.fecha} onChange={handleChange} required className="input-cyber" />
+              </div>
+              <div>
+                <label className="input-label"><DollarSign size={12} /> MONTO *</label>
+                <input name="monto" type="number" step="0.01" value={form.monto} onChange={handleChange} required className="input-cyber" />
+              </div>
             </div>
-            <div><label className="input-label"><FileText size={12} /> CONCEPTO *</label><input name="concepto" value={form.concepto} onChange={handleChange} required className="input-cyber" /></div>
-            <div><label className="input-label"><AlertCircle size={12} /> ESTADO</label><select name="estado" value={form.estado} onChange={handleChange} className="input-cyber"><option>Pendiente</option><option>Pagado</option><option>Anulado</option></select></div>
-            <div><label className="input-label"><FileText size={12} /> NOTAS</label><textarea name="notas" value={form.notas} onChange={handleChange} rows={2} className="input-cyber" /></div>
+
+            {/* Concepto */}
+            <div>
+              <label className="input-label"><FileText size={12} /> CONCEPTO *</label>
+              <input name="concepto" value={form.concepto} onChange={handleChange} required className="input-cyber" />
+            </div>
+
+            {/* Estado */}
+            <div>
+              <label className="input-label"><AlertCircle size={12} /> ESTADO</label>
+              <select name="estado" value={form.estado} onChange={handleChange} className="input-cyber">
+                <option>Pendiente</option>
+                <option>Pagado</option>
+                <option>Anulado</option>
+              </select>
+            </div>
+
+            {/* Notas */}
+            <div>
+              <label className="input-label"><FileText size={12} /> NOTAS</label>
+              <textarea name="notas" value={form.notas} onChange={handleChange} rows={2} className="input-cyber" />
+            </div>
+
+            {/* Botones */}
             <div className="flex gap-3 pt-4">
-              <button type="submit" disabled={loading} className="btn-primary"><Save size={16} /> {loading ? 'Guardando...' : 'Guardar'}</button>
-              <button type="button" onClick={() => router.push('/pagos')} className="btn-ghost"><X size={16} /> Cancelar</button>
+              <button type="submit" disabled={loading} className="btn-primary">
+                <Save size={16} /> {loading ? 'Guardando...' : 'Guardar'}
+              </button>
+              <button type="button" onClick={() => router.push('/pagos')} className="btn-ghost">
+                <X size={16} /> Cancelar
+              </button>
             </div>
           </form>
         </div>
