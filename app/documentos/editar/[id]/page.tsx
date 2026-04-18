@@ -48,7 +48,7 @@ export default function EditarDocumento() {
       if (obrasRes.data) setObras(obrasRes.data)
     }
     fetchData()
-  }, [Id])
+  }, [id])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -65,7 +65,7 @@ export default function EditarDocumento() {
     }
 
     // OFFLINE: Usar mutate para actualizar metadatos
-    const { error } = await mutate('update', payload, parseInt(Id))
+    const { error } = await mutate('update', payload, parseInt(id))
 
     if (error) {
       alert('Error: ' + error.message)
@@ -113,7 +113,7 @@ export default function EditarDocumento() {
               Editar Documento
             </h1>
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              ID: {Id} · ACTUALIZAR METADATOS
+              ID: {id} · ACTUALIZAR METADATOS
             </p>
           </div>
 
