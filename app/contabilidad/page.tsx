@@ -1,3 +1,4 @@
+// app/contabilidad/page.tsx
 'use client'
 
 import { supabase } from '@/lib/supabaseClient'
@@ -13,7 +14,7 @@ import {
 } from 'recharts'
 import * as XLSX from 'xlsx'
 
-// Tipo completo para una transacción enriquecida
+// Tipo para una transacción enriquecida (ingresos manuales o de origen)
 type TransaccionEnriquecida = {
   id: number
   obraid: number | null
@@ -26,12 +27,27 @@ type TransaccionEnriquecida = {
   categoria: string | null
   proveedor: string | null
   obras: { nombre: string } | null
-  presupuestos: { concepto: string } | null
-  empleados: { nombre: string } | null   // Solo si viene de un pago
+  empleados: { nombre: string } | null
+}
+
+// Tipo para pago (gasto)
+type PagoEnriquecido = {
+  id: number
+  empleadoid: number
+  obraid: number | null
+  categoriaid: number | null
+  fecha: string
+  monto: number
+  concepto: string
+  estado: string
+  empleados: { nombre: string } | null
+  obras: { nombre: string } | null
+  pago_categorias: { nombre: string } | null
 }
 
 export default function ContabilidadPage() {
   const [transacciones, setTransacciones] = useState<TransaccionEnriquecida[]>([])
+  const [pagos, setPagos] = useState<PagoEnriquecido[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroTipo, setFiltroTipo] = useState<string>('')
   const [filtroObra, setFiltroObra] = useState<string>('')
@@ -51,72 +67,88 @@ export default function ContabilidadPage() {
 
   const cargarDatos = async () => {
     setLoading(true)
-    
-    // Consulta enriquecida: traemos obras, presupuestos y empleados (cuando origen es 'Pago')
-    const { data, error } = await supabase
+
+    // 1. Obtener transacciones (ingresos manuales y posibles gastos generales)
+    const { data: transaccionesData, error: txError } = await supabase
       .from('transacciones')
       .select(`
         *,
-        obras ( nombre ),
-        presupuestos ( concepto )
+        obras ( nombre )
       `)
       .order('fecha', { ascending: false })
 
-    if (error) {
-      console.error(error)
-      setLoading(false)
-      return
-    }
+    if (txError) console.error(txError)
 
-    let transData = data as any[]
+    // 2. Obtener pagos (solo los que están en estado 'Pagado' porque ya son gastos reales)
+    const { data: pagosData, error: pError } = await supabase
+      .from('pagos')
+      .select(`
+        *,
+        empleados ( nombre ),
+        obras ( nombre ),
+        pago_categorias ( nombre )
+      `)
+      .eq('estado', 'Pagado')
+      .order('fecha', { ascending: false })
 
-    // Para las transacciones que vienen de Pagos, obtenemos el nombre del empleado
-    const pagosIds = transData
-      .filter(t => t.origen === 'Pago' && t.origen_id)
-      .map(t => t.origen_id)
-    
-    if (pagosIds.length > 0) {
-      const { data: pagosData } = await supabase
-        .from('pagos')
-        .select('id, empleados(nombre)')
-        .in('id', pagosIds)
-      
-      if (pagosData) {
-        const empleadoMap = new Map(pagosData.map((p: any) => [p.id, p.empleados?.nombre]))
-        transData = transData.map(t => {
-          if (t.origen === 'Pago' && t.origen_id) {
-            return { ...t, empleados: { nombre: empleadoMap.get(t.origen_id) || null } }
-          }
-          return t
-        })
-      }
-    }
+    if (pError) console.error(pError)
 
-    setTransacciones(transData as TransaccionEnriquecida[])
-    
+    const transaccionesList = (transaccionesData || []) as TransaccionEnriquecida[]
+    const pagosList = (pagosData || []) as PagoEnriquecido[]
+
+    // Unir ambos para mostrar en la tabla (transacciones + pagos como gastos)
+    // Convertir pagos a formato similar a transacciones para la tabla unificada
+    const pagosComoTransacciones: TransaccionEnriquecida[] = pagosList.map(p => ({
+      id: p.id,
+      obraid: p.obraid,
+      fecha: p.fecha,
+      concepto: p.concepto,
+      monto: p.monto,
+      tipo: 'Gasto',
+      origen: 'Pago',
+      origen_id: p.id,
+      categoria: p.pago_categorias?.nombre || null,
+      proveedor: null,
+      obras: p.obras,
+      empleados: p.empleados
+    }))
+
+    const todasTransacciones = [...transaccionesList, ...pagosComoTransacciones].sort(
+      (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+    )
+
+    setTransacciones(todasTransacciones)
+    setPagos(pagosList)
+
     // Calcular estadísticas
-    const ingresos = transData.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + t.monto, 0)
-    const gastos = transData.filter(t => t.tipo === 'Gasto').reduce((s, t) => s + t.monto, 0)
+    const ingresos = transaccionesList.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + t.monto, 0)
+    const gastos = pagosList.reduce((s, p) => s + p.monto, 0) + 
+                   transaccionesList.filter(t => t.tipo === 'Gasto').reduce((s, t) => s + t.monto, 0)
     setStats({ ingresos, gastos, balance: ingresos - gastos })
 
-    // Evolución mensual
+    // Evolución mensual (últimos 6 meses) basada en pagos y transacciones de gasto/ingreso
     const ahora = new Date()
     const meses = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(ahora.getFullYear(), ahora.getMonth() - (5 - i), 1)
       return { key: d.toISOString().slice(0, 7), label: d.toLocaleString('es', { month: 'short' }).toUpperCase() }
     })
+
     const evolucion = meses.map(m => {
-      const ingresosMes = transData.filter(t => t.tipo === 'Ingreso' && t.fecha?.startsWith(m.key)).reduce((s, t) => s + t.monto, 0)
-      const gastosMes = transData.filter(t => t.tipo === 'Gasto' && t.fecha?.startsWith(m.key)).reduce((s, t) => s + t.monto, 0)
+      const ingresosMes = transaccionesList
+        .filter(t => t.tipo === 'Ingreso' && t.fecha?.startsWith(m.key))
+        .reduce((s, t) => s + t.monto, 0)
+      const gastosMes = pagosList
+        .filter(p => p.fecha?.startsWith(m.key))
+        .reduce((s, p) => s + p.monto, 0)
       return { mes: m.label, ingresos: ingresosMes, gastos: gastosMes }
     })
     setEvolucionData(evolucion)
 
-    // Gastos por categoría
+    // Gastos por categoría (usando pago_categorias)
     const gastosPorCat: Record<string, number> = {}
-    transData.filter(t => t.tipo === 'Gasto').forEach(t => {
-      const cat = t.categoria || 'Sin categoría'
-      gastosPorCat[cat] = (gastosPorCat[cat] || 0) + t.monto
+    pagosList.forEach(p => {
+      const cat = p.pago_categorias?.nombre || 'Sin categoría'
+      gastosPorCat[cat] = (gastosPorCat[cat] || 0) + p.monto
     })
     setCategoriaData(Object.entries(gastosPorCat).map(([name, value]) => ({ name, value })))
 
@@ -127,6 +159,7 @@ export default function ContabilidadPage() {
     setLoading(false)
   }
 
+  // Filtros combinados (sobre todas las transacciones, incluyendo pagos convertidos)
   const transaccionesFiltradas = transacciones.filter(t => {
     const matchTipo = !filtroTipo || t.tipo === filtroTipo
     const matchObra = !filtroObra || t.obraid?.toString() === filtroObra
@@ -146,7 +179,6 @@ export default function ContabilidadPage() {
       Tipo: t.tipo,
       Concepto: t.concepto,
       Obra: t.obras?.nombre || '',
-      'Partida Presupuesto': t.presupuestos?.concepto || '',
       Empleado_Proveedor: t.empleados?.nombre || t.proveedor || '',
       Categoría: t.categoria || '',
       Monto: t.monto,
@@ -154,7 +186,7 @@ export default function ContabilidadPage() {
     }))
     const ws = XLSX.utils.json_to_sheet(datos)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Transacciones')
+    XLSX.utils.book_append_sheet(wb, ws, 'Movimientos')
     XLSX.writeFile(wb, `contabilidad_${new Date().toISOString().slice(0,10)}.xlsx`)
   }
 
@@ -255,9 +287,8 @@ export default function ContabilidadPage() {
           {/* Encabezados */}
           <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs font-mono text-muted border-b border-border bg-elevated">
             <div className="col-span-1">FECHA</div>
-            <div className="col-span-2">CONCEPTO</div>
+            <div className="col-span-3">CONCEPTO</div>
             <div className="col-span-2">OBRA</div>
-            <div className="col-span-1">PARTIDA</div>
             <div className="col-span-2">EMPLEADO / PROVEEDOR</div>
             <div className="col-span-1">CATEGORÍA</div>
             <div className="col-span-1">TIPO</div>
@@ -268,21 +299,16 @@ export default function ContabilidadPage() {
           {/* Filas */}
           {transaccionesFiltradas.map(t => (
             <motion.div
-              key={t.id}
+              key={`${t.origen}_${t.id}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="grid grid-cols-12 gap-2 items-center p-3 card text-sm hover:bg-red-ghost transition-colors"
             >
               <div className="col-span-1 font-mono text-muted text-xs">{new Date(t.fecha).toLocaleDateString()}</div>
-              <div className="col-span-2 font-medium truncate" title={t.concepto}>{t.concepto}</div>
+              <div className="col-span-3 font-medium truncate" title={t.concepto}>{t.concepto}</div>
               <div className="col-span-2 text-muted truncate" title={t.obras?.nombre || ''}>
                 {t.obras?.nombre ? (
                   <span className="flex items-center gap-1"><Building2 size={12} />{t.obras.nombre}</span>
-                ) : '—'}
-              </div>
-              <div className="col-span-1 text-muted truncate" title={t.presupuestos?.concepto || ''}>
-                {t.presupuestos?.concepto ? (
-                  <span className="flex items-center gap-1"><FolderOpen size={12} />{t.presupuestos.concepto}</span>
                 ) : '—'}
               </div>
               <div className="col-span-2 text-muted truncate" title={t.empleados?.nombre || t.proveedor || ''}>
@@ -306,7 +332,7 @@ export default function ContabilidadPage() {
                 {t.tipo === 'Ingreso' ? '+' : '-'} RD$ {t.monto.toLocaleString()}
               </div>
               <div className="col-span-1 text-xs text-muted">
-                {t.origen === 'Pago' ? '🤖 Pago nómina' : t.origen || 'Manual'}
+                {t.origen === 'Pago' ? '💵 Pago nómina' : t.origen || 'Manual'}
               </div>
             </motion.div>
           ))}
@@ -314,7 +340,7 @@ export default function ContabilidadPage() {
       </div>
 
       {transaccionesFiltradas.length === 0 && (
-        <div className="card p-12 text-center text-muted">No hay transacciones que coincidan con los filtros.</div>
+        <div className="card p-12 text-center text-muted">No hay movimientos que coincidan con los filtros.</div>
       )}
     </motion.div>
   )

@@ -1,33 +1,19 @@
 'use client'
-
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState} from 'react'
-import { motion } from 'framer-motion'
-import { Save, X, Building2, FileText, User, MapPin, DollarSign, Calendar, Percent, WifiOff } from 'lucide-react'
-import ProtectedRoute from '@/lib/ProtectedRoute'
-import { useOfflineMutation } from '@/hooks/useOfflineMutation'
-import { useNetworkStatus } from '@/hooks/useNetworkStatus'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-
-type ObraForm = {
-  nombre: string
-  descripcion: string
-  cliente: string
-  ubicacion: string
-  presupuestototal: string
-  estado: string
-  progreso: string
-  fechainicio: string
-  fechafin: string
-}
+import { motion } from 'framer-motion'
+import { Save, X, Building2, FileText, User, MapPin, DollarSign, Calendar, Percent } from 'lucide-react'
+import ProtectedRoute from '@/lib/ProtectedRoute'
+import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
 export default function EditarObra() {
   const router = useRouter()
-  const params=useParams();
-  const id=params.id as string;
+  const params = useParams()
+  const id = params.id as string
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState<ObraForm>({
+  const [form, setForm] = useState({
     nombre: '',
     descripcion: '',
     cliente: '',
@@ -38,22 +24,13 @@ export default function EditarObra() {
     fechainicio: '',
     fechafin: ''
   })
-
   const isOnline = useNetworkStatus()
-  const { mutate } = useOfflineMutation('obras')
 
   useEffect(() => {
     const fetchObra = async () => {
-      const { data, error } = await supabase
-        .from('obras')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (error) {
-        alert('Error al cargar la obra')
-        router.push('/obras')
-      } else if (data) {
+      const { data, error } = await supabase.from('obras').select('*').eq('id', id).single()
+      if (error) { alert('Error al cargar la obra'); router.push('/obras') }
+      else if (data) {
         setForm({
           nombre: data.nombre || '',
           descripcion: data.descripcion || '',
@@ -77,7 +54,6 @@ export default function EditarObra() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-
     const payload = {
       nombre: form.nombre,
       descripcion: form.descripcion || null,
@@ -89,98 +65,36 @@ export default function EditarObra() {
       fechainicio: form.fechainicio || null,
       fechafin: form.fechafin || null
     }
-
-    // OFFLINE: id is lowercase, parseInt converts string param to number
-    const result = await mutate('update', payload, parseInt(id))
-
-    if (result.error) {
-      alert('Error al actualizar: ' + result.error.message)
-    } else {
-      if (!isOnline) {
-        alert('Obra guardada localmente. Se sincronizará al recuperar la conexión.')
-      }
-      router.push('/obras')
-    }
+    const { error } = await supabase.from('obras').update(payload).eq('id', id)
+    if (error) alert('Error: ' + error.message)
+    else router.push('/obras')
     setLoading(false)
   }
 
   return (
     <ProtectedRoute>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-3xl mx-auto"
-      >
-        {!isOnline && (
-          <div className="mb-3 p-2 card-alert flex items-center gap-2 text-sm">
-            <WifiOff size={16} /> Modo sin conexión — los cambios se guardarán localmente
-          </div>
-        )}
-
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto">
+        {!isOnline && <div className="mb-3 p-2 card-alert flex items-center gap-2 text-sm"><WifiOff size={16} /> Modo sin conexión — los cambios se guardarán localmente</div>}
         <div className="card p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-2xl font-bold glitch" data-text="Editar Obra"
-                style={{ color: 'var(--text-primary)' }}>
-              Editar Obra
-            </h1>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              ID: {id} · ACTUALIZAR INFORMACIÓN
-            </p>
+            <h1 className="text-2xl font-bold glitch" data-text="Editar Obra">Editar Obra</h1>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {id} · ACTUALIZAR INFORMACIÓN</p>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="input-label"><Building2 size={12} className="inline mr-1" /> NOMBRE *</label>
-                <input name="nombre" value={form.nombre} onChange={handleChange} required className="input-cyber" />
-              </div>
-              <div>
-                <label className="input-label"><User size={12} className="inline mr-1" /> CLIENTE</label>
-                <input name="cliente" value={form.cliente} onChange={handleChange} className="input-cyber" />
-              </div>
-              <div>
-                <label className="input-label"><MapPin size={12} className="inline mr-1" /> UBICACIÓN</label>
-                <input name="ubicacion" value={form.ubicacion} onChange={handleChange} className="input-cyber" />
-              </div>
-              <div>
-                <label className="input-label"><DollarSign size={12} className="inline mr-1" /> PRESUPUESTO (RD$)</label>
-                <input name="presupuestototal" type="number" step="0.01" value={form.presupuestototal} onChange={handleChange} className="input-cyber" />
-              </div>
-              <div>
-                <label className="input-label"><FileText size={12} className="inline mr-1" /> ESTADO</label>
-                <select name="estado" value={form.estado} onChange={handleChange} className="input-cyber">
-                  <option>Planificado</option>
-                  <option>En progreso</option>
-                  <option>Pausado</option>
-                  <option>Finalizado</option>
-                </select>
-              </div>
-              <div>
-                <label className="input-label"><Percent size={12} className="inline mr-1" /> PROGRESO (%)</label>
-                <input name="progreso" type="number" min="0" max="100" value={form.progreso} onChange={handleChange} className="input-cyber" />
-              </div>
-              <div>
-                <label className="input-label"><Calendar size={12} className="inline mr-1" /> FECHA INICIO</label>
-                <input name="fechainicio" type="date" value={form.fechainicio} onChange={handleChange} className="input-cyber" />
-              </div>
-              <div>
-                <label className="input-label"><Calendar size={12} className="inline mr-1" /> FECHA FIN</label>
-                <input name="fechafin" type="date" value={form.fechafin} onChange={handleChange} className="input-cyber" />
-              </div>
+              <div><label className="input-label"><Building2 size={12} /> NOMBRE *</label><input name="nombre" value={form.nombre} onChange={handleChange} required className="input-cyber" /></div>
+              <div><label className="input-label"><User size={12} /> CLIENTE</label><input name="cliente" value={form.cliente} onChange={handleChange} className="input-cyber" /></div>
+              <div><label className="input-label"><MapPin size={12} /> UBICACIÓN</label><input name="ubicacion" value={form.ubicacion} onChange={handleChange} className="input-cyber" /></div>
+              <div><label className="input-label"><DollarSign size={12} /> PRESUPUESTO TOTAL (RD$)</label><input name="presupuestototal" type="number" step="0.01" value={form.presupuestototal} onChange={handleChange} className="input-cyber" /></div>
+              <div><label className="input-label"><FileText size={12} /> ESTADO</label><select name="estado" value={form.estado} onChange={handleChange} className="input-cyber"><option>Planificado</option><option>En progreso</option><option>Pausado</option><option>Finalizado</option></select></div>
+              <div><label className="input-label"><Percent size={12} /> PROGRESO (%)</label><input name="progreso" type="number" min="0" max="100" value={form.progreso} onChange={handleChange} className="input-cyber" /></div>
+              <div><label className="input-label"><Calendar size={12} /> FECHA INICIO</label><input name="fechainicio" type="date" value={form.fechainicio} onChange={handleChange} className="input-cyber" /></div>
+              <div><label className="input-label"><Calendar size={12} /> FECHA FIN</label><input name="fechafin" type="date" value={form.fechafin} onChange={handleChange} className="input-cyber" /></div>
             </div>
-
-            <div>
-              <label className="input-label"><FileText size={12} className="inline mr-1" /> DESCRIPCIÓN</label>
-              <textarea name="descripcion" value={form.descripcion} onChange={handleChange} rows={3} className="input-cyber" />
-            </div>
-
+            <div><label className="input-label"><FileText size={12} /> DESCRIPCIÓN</label><textarea name="descripcion" value={form.descripcion} onChange={handleChange} rows={3} className="input-cyber" /></div>
             <div className="flex gap-3 pt-4">
-              <button type="submit" disabled={loading} className="btn-primary flex items-center gap-2">
-                <Save size={16} /> {loading ? 'Guardando...' : 'Actualizar Obra'}
-              </button>
-              <button type="button" onClick={() => router.push('/obras')} className="btn-ghost flex items-center gap-2">
-                <X size={16} /> Cancelar
-              </button>
+              <button type="submit" disabled={loading} className="btn-primary"><Save size={16} /> {loading ? 'Guardando...' : 'Actualizar Obra'}</button>
+              <button type="button" onClick={() => router.push('/obras')} className="btn-ghost"><X size={16} /> Cancelar</button>
             </div>
           </form>
         </div>
