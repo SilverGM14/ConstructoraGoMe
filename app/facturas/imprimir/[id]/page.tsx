@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabaseClient'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import ProtectedRoute from '@/lib/ProtectedRoute' 
 
 type Factura = {
   id: number
