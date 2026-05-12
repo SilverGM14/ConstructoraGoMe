@@ -105,13 +105,23 @@ export default function FacturasPage() {
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
-                  {f.estado !== 'Pagada' && (
-                    <button onClick={() => cambiarEstado(f.id, 'Pagada')} className="btn-ghost text-sm"><CheckCircle size={14} /> Marcar Pagada</button>
-                  )}
-                  <Link href={`/facturas/editar/${f.id}`} className="btn-ghost text-sm"><Edit size={14} /> Editar</Link>
-                  <Link href={`/facturas/imprimir/${f.id}`} target="_blank" className="btn-ghost text-sm">
-                    <Printer size={14} /> Imprimir
-                  <button onClick={() => eliminarFactura(f.id)} className="btn-danger text-sm"><Trash2 size={14} /> Eliminar</button>
+                    {f.estado !== 'Pagada' && (
+                        <button onClick={() => cambiarEstado(f.id, 'Pagada')} className="btn-ghost text-sm">
+                        <CheckCircle size={14} /> Marcar Pagada
+                        </button>
+                    )}
+                    
+                    <Link href={`/facturas/editar/${f.id}`} className="btn-ghost text-sm">
+                        <Edit size={14} /> Editar
+                    </Link>
+                    
+                    <Link href={`/facturas/imprimir/${f.id}`} target="_blank" className="btn-ghost text-sm">
+                        <Printer size={14} /> Imprimir
+                    </Link>
+                    
+                    <button onClick={() => eliminarFactura(f.id)} className="btn-danger text-sm">
+                        <Trash2 size={14} /> Eliminar
+                    </button>
                 </div>
               </div>
             ))}
