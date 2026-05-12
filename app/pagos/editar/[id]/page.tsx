@@ -42,7 +42,7 @@ export default function EditarPago() {
         supabase.from('pagos').select('*').eq('id', id).single(),
         supabase.from('empleados').select('id, nombre'),
         supabase.from('obras').select('id, nombre, obrapadreid'),
-        supabase.from('pago_categorias').select('id, nombre').order('nombre')
+        supabase.from('pago_categorias').select('id, nombre, color').order('nombre')
       ])
 
       if (pagoRes.data) {
