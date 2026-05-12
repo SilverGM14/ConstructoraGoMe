@@ -1,12 +1,14 @@
+// app/obras/page.tsx
 'use client'
-import React from 'react'
+
 import { supabase } from '@/lib/supabaseClient'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Building2, TrendingUp, CheckCircle, Target,
-  Plus, Edit, Trash2, MapPin, User, Calendar, Layers, WifiOff
+  Plus, Edit, Trash2, MapPin, User, Calendar, Layers,
+  WifiOff, DollarSign, TrendingDown
 } from 'lucide-react'
 import ProtectedRoute from '@/lib/ProtectedRoute'
 import { useOfflineMutation } from '@/hooks/useOfflineMutation'
@@ -20,6 +22,7 @@ type Obra = {
   cliente: string | null
   ubicacion: string | null
   presupuestototal: number
+  total_gastado: number      // ← nuevo campo
   progreso: number
   estado: string
   fechainicio: string | null
@@ -31,15 +34,16 @@ type ObraConHijos = Obra & { hijos: ObraConHijos[] }
 export default function ObrasPage() {
   const [obras, setObras] = useState<Obra[]>([])
   const [loading, setLoading] = useState(true)
+  const [obraSeleccionadaId, setObraSeleccionadaId] = useState<number | null>(null)
   const [stats, setStats] = useState({
     total: 0,
     activas: 0,
     presupuestoTotal: 0,
+    gastadoTotal: 0,
     progresoPromedio: 0
   })
   const [vistaJerarquica, setVistaJerarquica] = useState(true)
 
-  // OFFLINE: Hooks de red y mutación offline
   const isOnline = useNetworkStatus()
   const { mutate } = useOfflineMutation('obras')
 
@@ -47,6 +51,7 @@ export default function ObrasPage() {
     cargarObras()
   }, [])
 
+  // Cargar todas las obras
   const cargarObras = async () => {
     const { data, error } = await supabase
       .from('obras')
@@ -56,28 +61,90 @@ export default function ObrasPage() {
     if (!error && data) {
       const obrasData = data as Obra[]
       setObras(obrasData)
-      const total = obrasData.length
-      const activas = obrasData.filter(o => o.estado !== 'Finalizado').length
-      const presupuestoTotal = obrasData.reduce((sum, o) => sum + (o.presupuestototal || 0), 0)
-      const progresoPromedio = total ? Math.round(obrasData.reduce((sum, o) => sum + (o.progreso || 0), 0) / total) : 0
-      setStats({ total, activas, presupuestoTotal, progresoPromedio })
+      // Si hay selección, actualizar stats filtrados; si no, stats globales
+      if (obraSeleccionadaId !== null) {
+        actualizarStatsPorObra(obraSeleccionadaId, obrasData)
+      } else {
+        calcularStatsGlobales(obrasData)
+      }
     }
     setLoading(false)
   }
 
+  // Calcular stats sobre todas las obras
+  const calcularStatsGlobales = (lista: Obra[]) => {
+    const total = lista.length
+    const activas = lista.filter(o => o.estado !== 'Finalizado').length
+    const presupuestoTotal = lista.reduce((sum, o) => sum + (o.presupuestototal || 0), 0)
+    const gastadoTotal = lista.reduce((sum, o) => sum + (o.total_gastado || 0), 0)
+    const progresoPromedio = total ? Math.round(lista.reduce((sum, o) => sum + (o.progreso || 0), 0) / total) : 0
+    setStats({ total, activas, presupuestoTotal, gastadoTotal, progresoPromedio })
+  }
+
+  // Obtener todas las subobras (recursivo) a partir de una obra raíz
+  const obtenerArbolIds = (lista: Obra[], raizId: number): number[] => {
+    const ids: number[] = [raizId]
+    const hijos = lista.filter(o => o.obrapadreid === raizId)
+    hijos.forEach(hijo => {
+      ids.push(...obtenerArbolIds(lista, hijo.id))
+    })
+    return ids
+  }
+
+  // Calcular stats solo para la obra seleccionada y sus subobras
+  const actualizarStatsPorObra = (raizId: number, lista: Obra[]) => {
+    const idsIncluidos = obtenerArbolIds(lista, raizId)
+    const obrasFiltradas = lista.filter(o => idsIncluidos.includes(o.id))
+    const total = obrasFiltradas.length
+    const activas = obrasFiltradas.filter(o => o.estado !== 'Finalizado').length
+    const presupuestoTotal = obrasFiltradas.reduce((sum, o) => sum + (o.presupuestototal || 0), 0)
+    const gastadoTotal = obrasFiltradas.reduce((sum, o) => sum + (o.total_gastado || 0), 0)
+    const progresoPromedio = total ? Math.round(obrasFiltradas.reduce((sum, o) => sum + (o.progreso || 0), 0) / total) : 0
+    setStats({ total, activas, presupuestoTotal, gastadoTotal, progresoPromedio })
+  }
+
+  // Cuando cambia la selección
+  const handleSelectObra = (obraId: string) => {
+    const id = obraId === '' ? null : parseInt(obraId)
+    setObraSeleccionadaId(id)
+    if (id !== null) {
+      actualizarStatsPorObra(id, obras)
+    } else {
+      calcularStatsGlobales(obras)
+    }
+  }
+
+  // Obtener lista filtrada para mostrar en el listado (según selección)
+  const getObrasFiltradas = (): Obra[] => {
+    if (obraSeleccionadaId === null) return obras
+    const idsIncluidos = obtenerArbolIds(obras, obraSeleccionadaId)
+    return obras.filter(o => idsIncluidos.includes(o.id))
+  }
+
+  // Construir árbol jerárquico a partir de una lista plana (la filtrada)
+  const construirJerarquia = (lista: Obra[]): ObraConHijos[] => {
+    const mapa = new Map<number, ObraConHijos>()
+    lista.forEach(o => mapa.set(o.id, { ...o, hijos: [] }))
+    const raices: ObraConHijos[] = []
+    lista.forEach(o => {
+      if (o.obrapadreid && mapa.has(o.obrapadreid)) {
+        const padre = mapa.get(o.obrapadreid)
+        if (padre) padre.hijos.push(mapa.get(o.id)!)
+      } else if (!o.obrapadreid) {
+        raices.push(mapa.get(o.id)!)
+      }
+    })
+    return raices
+  }
+
   const eliminarObra = async (id: number) => {
     if (!confirm('¿Eliminar esta obra y todas sus subobras? Esta acción no se puede deshacer.')) return
-    
-    // OFFLINE: Usar mutate para eliminar
-    const result = await mutate('delete', {}, id);
-    
+    const result = await mutate('delete', {}, id)
     if (result.error) {
       alert('Error al eliminar: ' + result.error.message)
     } else {
-      if (!isOnline) {
-        alert('Obra marcada para eliminar. Se sincronizará al recuperar la conexión.')
-      }
-      cargarObras() // Refrescar lista (en modo offline mostrará el cambio local)
+      if (!isOnline) alert('Obra marcada para eliminar. Se sincronizará al recuperar la conexión.')
+      cargarObras()
     }
   }
 
@@ -91,24 +158,9 @@ export default function ObrasPage() {
     }
   }
 
-  // Función para construir árbol jerárquico (CORREGIDA)
-  const construirJerarquia = (lista: Obra[]): ObraConHijos[] => {
-    const mapa = new Map<number, ObraConHijos>()
-    lista.forEach(o => mapa.set(o.id, { ...o, hijos: [] }))
-    const raices: ObraConHijos[] = []
-    lista.forEach(o => {
-      if (o.obrapadreid) {
-        const padre = mapa.get(o.obrapadreid)
-        if (padre) padre.hijos.push(mapa.get(o.id)!)
-      } else {
-        raices.push(mapa.get(o.id)!)
-      }
-    })
-    return raices
-  }
-
   const renderObra = (obra: ObraConHijos, nivel: number = 0): React.ReactNode => {
     const progreso = obra.progreso || 0
+    const restante = obra.presupuestototal - (obra.total_gastado || 0)
     return (
       <React.Fragment key={obra.id}>
         <motion.div
@@ -145,10 +197,20 @@ export default function ObrasPage() {
                   <div className="progress-fill" style={{ width: `${progreso}%` }} />
                 </div>
               </div>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold" style={{ color: 'var(--red-core)' }}>RD$ {obra.presupuestototal?.toLocaleString()}</p>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)' }}>Presupuesto</p>
+              <div className="mt-2 flex gap-4 text-xs">
+                <div>
+                  <span className="text-muted">Presupuesto:</span>{' '}
+                  <span className="font-mono font-bold">RD$ {obra.presupuestototal?.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-muted">Gastado:</span>{' '}
+                  <span className="font-mono font-bold" style={{ color: 'var(--red-core)' }}>RD$ {(obra.total_gastado || 0).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-muted">Restante:</span>{' '}
+                  <span className="font-mono font-bold" style={{ color: restante >= 0 ? '#00C47A' : 'var(--red-core)' }}>RD$ {restante.toLocaleString()}</span>
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
@@ -177,12 +239,12 @@ export default function ObrasPage() {
     )
   }
 
-  const obrasJerarquicas = construirJerarquia(obras)
+  const obrasFiltradas = getObrasFiltradas()
+  const obrasJerarquicas = construirJerarquia(obrasFiltradas)
 
   return (
     <ProtectedRoute>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 max-w-screen-2xl mx-auto">
-        {/* OFFLINE: Badge de estado sin conexión */}
         {!isOnline && (
           <div className="mb-3 p-2 card-alert flex items-center gap-2 text-sm">
             <WifiOff size={16} /> Modo sin conexión — los cambios se guardarán localmente
@@ -202,6 +264,27 @@ export default function ObrasPage() {
           </div>
         </div>
 
+        {/* Selector de obra raíz */}
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[250px]">
+            <label className="input-label">FILTRAR POR OBRA PRINCIPAL</label>
+            <select
+              className="input-cyber"
+              value={obraSeleccionadaId || ''}
+              onChange={(e) => handleSelectObra(e.target.value)}
+            >
+              <option value="">Todas las obras</option>
+              {obras.filter(o => !o.obrapadreid).map(obra => (
+                <option key={obra.id} value={obra.id}>{obra.nombre}</option>
+              ))}
+            </select>
+          </div>
+          {obraSeleccionadaId !== null && (
+            <button onClick={() => handleSelectObra('')} className="btn-ghost text-sm">Limpiar filtro</button>
+          )}
+        </div>
+
+        {/* KPIs dinámicos */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="kpi-card">
             <div className="flex items-start justify-between mb-3"><p className="kpi-label">Total Obras</p><div style={{ width: 32, height: 32, background: 'var(--red-ghost)', border: '1px solid var(--border-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={15} style={{ color: 'var(--red-core)' }} /></div></div>
@@ -219,13 +302,18 @@ export default function ObrasPage() {
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Inversión total</p>
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="kpi-card">
-            <div className="flex items-start justify-between mb-3"><p className="kpi-label">Progreso Promedio</p><div style={{ width: 32, height: 32, background: 'var(--red-ghost)', border: '1px solid var(--border-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Target size={15} style={{ color: 'var(--red-core)' }} /></div></div>
-            <p className="kpi-value">{stats.progresoPromedio}%</p>
-            <div className="progress-track mt-2"><div className="progress-fill" style={{ width: `${stats.progresoPromedio}%` }} /></div>
+            <div className="flex items-start justify-between mb-3"><p className="kpi-label">Gastado vs Restante</p><div style={{ width: 32, height: 32, background: 'var(--red-ghost)', border: '1px solid var(--border-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DollarSign size={15} style={{ color: 'var(--red-core)' }} /></div></div>
+            <p className="kpi-value" style={{ fontSize: '1.5rem' }}>
+              RD$ {stats.gastadoTotal.toLocaleString()} <span className="text-sm">/</span> RD$ {(stats.presupuestoTotal - stats.gastadoTotal).toLocaleString()}
+            </p>
+            <div className="progress-track mt-2">
+              <div className="progress-fill" style={{ width: `${(stats.gastadoTotal / stats.presupuestoTotal) * 100 || 0}%` }} />
+            </div>
           </motion.div>
         </div>
 
-        {obras.length === 0 ? (
+        {/* Listado */}
+        {obrasFiltradas.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card p-12 text-center">
             <Building2 size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 1rem' }} />
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>NO HAY OBRAS REGISTRADAS</p>
@@ -236,34 +324,39 @@ export default function ObrasPage() {
             <AnimatePresence>
               {vistaJerarquica
                 ? obrasJerarquicas.map(obra => renderObra(obra, 0))
-                : obras.map((obra, i) => (
-                    <motion.div key={obra.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ delay: i * 0.03 }} className="card p-5">
-                      <div className="flex flex-wrap justify-between items-start gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{obra.nombre}</h2>
-                            <span className={`badge ${getEstadoBadge(obra.estado)}`} style={{ fontSize: '0.6rem' }}>{obra.estado}</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm mb-3">
-                            {obra.cliente && <div className="flex items-center gap-2"><User size={12} style={{ color: 'var(--text-muted)' }} /><span>{obra.cliente}</span></div>}
-                            {obra.ubicacion && <div className="flex items-center gap-2"><MapPin size={12} style={{ color: 'var(--text-muted)' }} /><span>{obra.ubicacion}</span></div>}
-                          </div>
-                          <div className="max-w-md">
-                            <div className="flex justify-between text-xs mb-1"><span>Progreso</span><span>{obra.progreso}%</span></div>
-                            <div className="progress-track"><div className="progress-fill" style={{ width: `${obra.progreso}%` }} /></div>
+                : obrasFiltradas.map((obra, i) => {
+                    const restante = obra.presupuestototal - (obra.total_gastado || 0)
+                    return (
+                      <motion.div key={obra.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ delay: i * 0.03 }} className="card p-5">
+                        <div className="flex flex-wrap justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{obra.nombre}</h2>
+                              <span className={`badge ${getEstadoBadge(obra.estado)}`} style={{ fontSize: '0.6rem' }}>{obra.estado}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm mb-3">
+                              {obra.cliente && <div className="flex items-center gap-2"><User size={12} style={{ color: 'var(--text-muted)' }} /><span>{obra.cliente}</span></div>}
+                              {obra.ubicacion && <div className="flex items-center gap-2"><MapPin size={12} style={{ color: 'var(--text-muted)' }} /><span>{obra.ubicacion}</span></div>}
+                            </div>
+                            <div className="max-w-md">
+                              <div className="flex justify-between text-xs mb-1"><span>Progreso</span><span>{obra.progreso}%</span></div>
+                              <div className="progress-track"><div className="progress-fill" style={{ width: `${obra.progreso}%` }} /></div>
+                            </div>
+                            <div className="mt-2 flex gap-4 text-xs">
+                              <div><span className="text-muted">Presupuesto:</span> RD$ {obra.presupuestototal.toLocaleString()}</div>
+                              <div><span className="text-muted">Gastado:</span> RD$ {(obra.total_gastado || 0).toLocaleString()}</div>
+                              <div><span className="text-muted">Restante:</span> RD$ {restante.toLocaleString()}</div>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold" style={{ color: 'var(--red-core)' }}>RD$ {obra.presupuestototal?.toLocaleString()}</p>
+                        <div className="flex justify-end gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                          <Link href={`/obras/nueva?padre=${obra.id}`} className="btn-ghost text-sm py-1.5 px-3"><Plus size={14} /> Subobra</Link>
+                          <Link href={`/obras/editar/${obra.id}`} className="btn-ghost text-sm py-1.5 px-3"><Edit size={14} /> Editar</Link>
+                          <button onClick={() => eliminarObra(obra.id)} className="btn-danger text-sm py-1.5 px-3"><Trash2 size={14} /> Eliminar</button>
                         </div>
-                      </div>
-                      <div className="flex justify-end gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
-                        <Link href={`/obras/nueva?padre=${obra.id}`} className="btn-ghost text-sm py-1.5 px-3"><Plus size={14} /> Subobra</Link>
-                        <Link href={`/obras/editar/${obra.id}`} className="btn-ghost text-sm py-1.5 px-3"><Edit size={14} /> Editar</Link>
-                        <button onClick={() => eliminarObra(obra.id)} className="btn-danger text-sm py-1.5 px-3"><Trash2 size={14} /> Eliminar</button>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    )
+                  })}
             </AnimatePresence>
           </div>
         )}
