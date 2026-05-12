@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Save, X, Building2, FileText, User, MapPin, DollarSign, Calendar, Percent } from 'lucide-react'
+import { Save, X, Building2, FileText, User, MapPin, DollarSign, Calendar, Percent,WifiOff } from 'lucide-react'
 import ProtectedRoute from '@/lib/ProtectedRoute'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
