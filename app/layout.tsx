@@ -31,7 +31,6 @@ const navSections: NavSection[] = [
     label: 'Proyectos',
     items: [
       { href: '/obras',        label: 'Obras',        icon: Building2 },
-      { href: '/presupuestos', label: 'Presupuestos', icon: ClipboardList },
       { href: '/documentos',   label: 'Documentos',   icon: FolderOpen },
     ]
   },
