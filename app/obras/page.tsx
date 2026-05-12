@@ -13,6 +13,7 @@ import {
 import ProtectedRoute from '@/lib/ProtectedRoute'
 import { useOfflineMutation } from '@/hooks/useOfflineMutation'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
+import React from 'react'
 
 type Obra = {
   id: number
