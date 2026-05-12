@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Building2, Users, Receipt,
   ClipboardList, FolderOpen, Menu, X, Settings,
-  Sun, Moon, Wifi, WifiOff, ChevronRight, Zap, LogOut
+  Sun, Moon, Wifi, WifiOff, ChevronRight, Zap, LogOut,HelpCircle
 } from 'lucide-react'
 import './globals.css'
 import { AuthProvider, useAuth } from '@/lib/AuthContext'
@@ -39,12 +39,7 @@ const navSections: NavSection[] = [
     label: 'Finanzas',
     items: [
       { href: '/contabilidad', label: 'Contabilidad', icon: Receipt },
-    ]
-  },
-  {
-    label:'Ventas',
-    items:[
-      {href: '/facturas', label: 'Facturas', icon: Receipt}
+      { href: '/facturas', label: 'Facturas', icon: Receipt},
     ]
   },
   {
@@ -52,6 +47,12 @@ const navSections: NavSection[] = [
     items: [
       { href: '/empleados',    label: 'Empleados',    icon: Users },
       { href: '/pagos',        label: 'Pagos',        icon: Receipt },
+    ]
+  },
+  {
+    label: 'Soporte',
+    items:[
+      {href: '/ayuda', label: 'Ayuda', icon: HelpCircle},
     ]
   }
 ]

@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit, Trash2, Building2, Calendar, DollarSign, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, Building2, Calendar, DollarSign, FileText, CheckCircle, XCircle,Printer } from 'lucide-react'
 import ProtectedRoute from '@/lib/ProtectedRoute'
 
 type Factura = {
@@ -109,6 +109,8 @@ export default function FacturasPage() {
                     <button onClick={() => cambiarEstado(f.id, 'Pagada')} className="btn-ghost text-sm"><CheckCircle size={14} /> Marcar Pagada</button>
                   )}
                   <Link href={`/facturas/editar/${f.id}`} className="btn-ghost text-sm"><Edit size={14} /> Editar</Link>
+                  <Link href={`/facturas/imprimir/${f.id}`} target="_blank" className="btn-ghost text-sm">
+                    <Printer size={14} /> Imprimir
                   <button onClick={() => eliminarFactura(f.id)} className="btn-danger text-sm"><Trash2 size={14} /> Eliminar</button>
                 </div>
               </div>
