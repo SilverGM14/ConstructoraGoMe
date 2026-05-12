@@ -14,6 +14,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext'
 import { OnlineSyncProvider } from '@/components/OnlineSyncProvider';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
+
 // ── Tipos ────────────────────────────────────────────────────────────
 type NavSection = {
   label: string
@@ -38,6 +39,12 @@ const navSections: NavSection[] = [
     label: 'Finanzas',
     items: [
       { href: '/contabilidad', label: 'Contabilidad', icon: Receipt },
+    ]
+  },
+  {
+    label:'Ventas',
+    items:[
+      {href: '/facturas', label: 'Facturas', icon: Receipt}
     ]
   },
   {
