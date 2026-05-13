@@ -10,7 +10,7 @@ import ProtectedRoute from '@/lib/ProtectedRoute'
 import { useOfflineMutation } from '@/hooks/useOfflineMutation'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
-type Obra = { Id: number; Nombre: string }
+type Obra = { id: number; nombre: string }
 
 export default function EditarDocumento() {
   const router = useRouter()
@@ -33,7 +33,7 @@ export default function EditarDocumento() {
     const fetchData = async () => {
       const [docRes, obrasRes] = await Promise.all([
         supabase.from('Documentos').select('*, Obras(Nombre)').eq('Id', id).single(),
-        supabase.from('obras').select('Id, Nombre')
+        supabase.from('obras').select('id, nombre')
       ])
 
       if (docRes.data) {
@@ -172,7 +172,7 @@ export default function EditarDocumento() {
                 className="input-cyber"
               >
                 <option value="">Sin obra asignada</option>
-                {obras.map(o => <option key={o.Id} value={o.Id}>{o.Nombre}</option>)}
+                {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
               </select>
             </div>
 

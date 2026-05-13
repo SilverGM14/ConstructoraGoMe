@@ -8,7 +8,7 @@ import { Upload, X, FileText, Building2, Save, WifiOff, AlertCircle } from 'luci
 import ProtectedRoute from '@/lib/ProtectedRoute'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
-type Obra = { Id: number; Nombre: string }
+type Obra = { id: number; nombre: string }
 
 export default function NuevoDocumento() {
   const router = useRouter()
@@ -26,7 +26,7 @@ export default function NuevoDocumento() {
   const isOnline = useNetworkStatus()
 
   useEffect(() => {
-    supabase.from('obras').select('Id, Nombre').then(res => {
+    supabase.from('obras').select('id, nombre').then(res => {
       if (res.data) setObras(res.data)
     })
   }, [])
@@ -222,7 +222,7 @@ export default function NuevoDocumento() {
                 className="input-cyber"
               >
                 <option value="">Sin obra asignada</option>
-                {obras.map(o => <option key={o.Id} value={o.Id}>{o.Nombre}</option>)}
+                {obras.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
               </select>
             </div>
 

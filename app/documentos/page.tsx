@@ -28,7 +28,7 @@ export default function DocumentosPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [obraFilter, setObraFilter] = useState<string>('')
-  const [obras, setObras] = useState<{ Id: number; Nombre: string }[]>([])
+  const [obras, setObras] = useState<{ id: number; nombre: string }[]>([])
   const [stats, setStats] = useState({ total: 0 })
 
   // OFFLINE: Hooks de red y mutación offline
