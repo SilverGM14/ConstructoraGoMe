@@ -7,12 +7,15 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Building2, Users, Receipt,
   ClipboardList, FolderOpen, Menu, X, Settings,
-  Sun, Moon, Wifi, WifiOff, ChevronRight, Zap, LogOut,HelpCircle
+  Sun, Moon, Wifi, WifiOff, ChevronRight, Zap, LogOut,HelpCircle,
+  DollarSign,
+  TrendingUp
 } from 'lucide-react'
 import './globals.css'
 import { AuthProvider, useAuth } from '@/lib/AuthContext'
 import { OnlineSyncProvider } from '@/components/OnlineSyncProvider';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
+import { ToastProvider } from '@/components/Toast'
 
 
 // ── Tipos ────────────────────────────────────────────────────────────
@@ -38,7 +41,7 @@ const navSections: NavSection[] = [
   {
     label: 'Finanzas',
     items: [
-      { href: '/contabilidad', label: 'Contabilidad', icon: Receipt },
+      { href: '/contabilidad', label: 'Contabilidad', icon: TrendingUp },
       { href: '/facturas', label: 'Facturas', icon: Receipt},
     ]
   },
@@ -46,7 +49,7 @@ const navSections: NavSection[] = [
     label: 'Equipo',
     items: [
       { href: '/empleados',    label: 'Empleados',    icon: Users },
-      { href: '/pagos',        label: 'Pagos',        icon: Receipt },
+      { href: '/pagos',        label: 'Pagos',        icon: DollarSign },
     ]
   },
   {
@@ -245,9 +248,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <AuthProvider>
-          <OnlineSyncProvider>
+          <ToastProvider>
+            <OnlineSyncProvider>
             <AppLayout>{children}</AppLayout>
           </OnlineSyncProvider>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

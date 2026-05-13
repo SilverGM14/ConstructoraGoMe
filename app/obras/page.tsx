@@ -231,14 +231,6 @@ export default function ObrasPage() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div style={{ width: 40, height: 40, border: '2px solid var(--border)', borderTop: '2px solid var(--red-core)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>CARGANDO OBRAS...</p>
-      </div>
-    )
-  }
 
   const obrasFiltradas = getObrasFiltradas()
   const obrasJerarquicas = construirJerarquia(obrasFiltradas)

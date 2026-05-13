@@ -61,7 +61,6 @@ export default function FacturasPage() {
     cargarFacturas()
   }
 
-  if (loading) return <div className="flex justify-center p-8">Cargando...</div>
 
   return (
     <ProtectedRoute>

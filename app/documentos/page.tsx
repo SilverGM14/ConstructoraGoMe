@@ -41,7 +41,7 @@ export default function DocumentosPage() {
   }, [])
 
   const cargarObras = async () => {
-    const { data } = await supabase.from('obras').select('Id, Nombre')
+    const { data } = await supabase.from('obras').select('id, nombre')
     if (data) setObras(data)
   }
 
@@ -121,23 +121,6 @@ export default function DocumentosPage() {
     return matchSearch && matchObra
   })
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div style={{
-          width: 40, height: 40,
-          border: '2px solid var(--border)',
-          borderTop: '2px solid var(--red-core)',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite'
-        }} />
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.1em' }}>
-          CARGANDO DOCUMENTOS...
-        </p>
-      </div>
-    )
-  }
-
   return (
     <ProtectedRoute>
       <motion.div
@@ -202,7 +185,7 @@ export default function DocumentosPage() {
             >
               <option value="">Todas las obras</option>
               {obras.map(o => (
-                <option key={o.Id} value={o.Id}>{o.Nombre}</option>
+                <option key={o.id} value={o.id}>{o.nombre}</option>
               ))}
             </select>
           </div>

@@ -36,7 +36,6 @@ export default function ImprimirFactura() {
     cargar()
   }, [id])
 
-  if (loading) return <div className="p-8 text-center">Cargando...</div>
   if (!factura) return <div className="p-8 text-center">Factura no encontrada</div>
 
   return (
